@@ -1,0 +1,92 @@
+﻿@page "/constructor"
+
+@using System.Net.Http
+@using System.Text.Json
+@using F1_Blazor_App.Models
+@using System.Linq
+
+<PageTitle>Constructors</PageTitle>
+<h1>Constructor Details</h1>
+<img src="https://i.pinimg.com/originals/eb/5c/0b/eb5c0b226670d4c596ea200b65421436.jpg" alt="Formula 1 Image" style="width: 500px; float: right; margin-right: 100px;">
+
+<h4>Read about your favourite Team!</h4>
+
+<!-- Dropdown for selecting a constructor -->
+<select @onchange="OnConstructorSelected">
+    <option value="">Select a constructor</option>
+    @if (constructorData?.Results != null)
+    {
+        @foreach (var result in constructorData.Results)
+        {
+                    <option value="@result.Team_Id.ToString()">@result.Team_Name</option>
+        }
+    }
+</select>
+
+<!-- Display constructor standings details -->
+@if (selectedConstructor != null)
+{
+        <div>
+            <h4>Team Name: @selectedConstructor.Team_Name</h4>
+            <p>Points: @selectedConstructor.Points</p>
+            <p>Position: @selectedConstructor.Position</p>
+            <p>Season: @selectedConstructor.Season</p>
+            <p>Team ID: @selectedConstructor.Team_Id</p>
+        </div>
+}
+else
+{
+        <p>No selected constructor.</p>
+}
+
+@code {
+    private ConstructorData? constructorData;
+    private ResultData_Constructors? selectedConstructor;
+    private HttpClient client = new HttpClient(); // Add this line to declare the HttpClient
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Set the BaseAddress and headers
+            client.BaseAddress = new Uri("https://f1-live-motorsport-data.p.rapidapi.com/");
+            client.DefaultRequestHeaders.Add("X-RapidAPI-Key", "304c06dc21msh3182f3e514bb979p1f219cjsn998ff383a203");
+            client.DefaultRequestHeaders.Add("X-RapidAPI-Host", "f1-live-motorsport-data.p.rapidapi.com");
+
+            // Make the request
+            var response = await client.GetStringAsync("constructors/standings/2020");
+
+            // Log success
+            Console.WriteLine("API connected successfully!");
+
+            // Debug: Log the response from the API
+            Console.WriteLine($"Debug: API Response - {response}");
+
+            // Parse JSON data into a MyDataStructure object
+            constructorData = JsonSerializer.Deserialize<ConstructorData>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            // Debug: Log the constructor standings list
+            Console.WriteLine($"Debug: Constructor Standings Count = {constructorData?.Results?.Count ?? 0}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            // Optionally handle errors or display an error message to the user
+        }
+    }
+
+    private void OnConstructorSelected(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var teamId))
+        {
+            // Update selectedConstructor based on the full list of constructor standings
+            selectedConstructor = constructorData?.Results?.FirstOrDefault(result => result.Team_Id == teamId);
+        }
+        else
+        {
+            // Handle the case where the teamId is not a valid integer
+            // You might want to log an error or display a message to the user.
+            Console.WriteLine("Invalid team ID selected.");
+        }
+    }
+}

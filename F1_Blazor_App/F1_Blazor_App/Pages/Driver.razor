@@ -1,0 +1,107 @@
+﻿@page "/driver"
+@using System.Net.Http
+@using System.Text.Json
+@using F1_Blazor_App.Models
+@using System.Linq
+
+<PageTitle>Driver</PageTitle>
+<h1>Driver Details</h1>
+<h4>Read Informations about your favourite Driver!</h4>
+
+<img src="https://media.formula1.com/image/upload/content/dam/fom-website/manual/Misc/2019-Drive-line-ups/1017393633-LAT-20190317-_56I6843.jpg.transform/9col/image.jpg" alt="Formula 1 Image" style="width: 700px; float: right; margin-left: 30px; margin-top: 50px; margin-right: 50px;">
+
+@if (driverData == null)
+{
+        <p>Loading...</p>
+}
+else if (driverData.Results == null || !driverData.Results.Any())
+{
+        <p>No driver data available.</p>
+}
+else
+{
+        <!-- Dropdown for selecting a driver -->
+        <select @onchange="OnDriverSelected">
+            <option value="">Select a driver</option>
+        @foreach (var result in driverData.Results)
+        {
+                    <option value="@result.Driver_Id?.ToString()">@result.Driver_Name</option>
+        }
+        </select>
+
+        <!-- Display driver details -->
+    @if (selectedDriver != null)
+    {
+                <div>
+                    <h4>Name: @selectedDriver.Driver_Name</h4>
+                    <p>Driver ID: @selectedDriver.Driver_Id</p>
+                    <p>Nationality: @selectedDriver.Nationality</p>
+                    <p>Is Reserve: @selectedDriver.Is_Reserve</p>
+                    <p>Team: @selectedDriver.Team_Name</p>
+                    <p>Season: @selectedDriver.Season</p>
+                    <p>Position: @selectedDriver.Position</p>
+                    <p>Points: @selectedDriver.Points</p>
+                    <p>Updated: @selectedDriver.Updated</p>
+                </div>
+    }
+    else
+    {
+                <p>No selected driver.</p>
+    }
+}
+
+@code {
+    private DriverData? driverData;
+    private DriverResult? selectedDriver;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using (var httpClient = new HttpClient())
+        {
+            // Set the BaseAddress and headers
+            httpClient.BaseAddress = new Uri("https://f1-live-motorsport-data.p.rapidapi.com/");
+            httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Key", "304c06dc21msh3182f3e514bb979p1f219cjsn998ff383a203");
+            httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Host", "f1-live-motorsport-data.p.rapidapi.com");
+
+            try
+            {
+                // Make the request
+                var response = await httpClient.GetStringAsync("drivers/standings/2020");
+
+                // Log success
+                Console.WriteLine("API connected successfully!");
+
+                // Debug: Log the response from the API
+                Console.WriteLine($"Debug: API Response - {response}");
+
+                // Parse JSON data into a DriverData object
+                driverData = JsonSerializer.Deserialize<DriverData>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                // Debug: Log the drivers list
+                Console.WriteLine($"Debug: Drivers Count = {driverData?.Results?.Count ?? 0}");
+
+                Console.WriteLine($"Debug: Selected Driver - {JsonSerializer.Serialize(selectedDriver)}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                // Optionally handle errors or display an error message to the user
+            }
+        }
+    }
+
+    private void OnDriverSelected(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var driverId))
+        {
+            // Update selectedDriver based on the full list of drivers
+            selectedDriver = driverData?.Results?.FirstOrDefault(result => result.Driver_Id == driverId);
+        }
+        else
+        {
+            // Handle the case where the driverId is not a valid integer
+            // You might want to log an error or display a message to the user.
+            Console.WriteLine("Invalid driver ID selected.");
+        }
+    }
+}

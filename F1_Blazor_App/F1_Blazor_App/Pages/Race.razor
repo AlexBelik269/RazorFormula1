@@ -1,0 +1,109 @@
+﻿@page "/race"
+@using System.Net.Http
+@using System.Text.Json
+@using F1_Blazor_App.Models
+@using System.Linq
+
+<PageTitle>Race</PageTitle>
+<img src="https://hips.hearstapps.com/hmg-prod/images/red-bulls-dutch-driver-max-verstappen-leads-the-pack-news-photo-1596040749.jpg" alt="Formula 1 Image" style="width: 700px; float: right; margin-left: 20px; margin-top: 35px; margin-right: 50px;">
+<h1>Race Details</h1>
+<h4>Get Details of your favourite Race!</h4>
+
+<!-- Dropdown for selecting a race -->
+<select @onchange="OnRaceSelected">
+    <option value="">Select a race</option>
+    @if (raceData?.Results != null)
+    {
+        @foreach (var result in raceData.Results)
+        {
+                    <option value="@result.Race_Id">@result.Name</option>
+        }
+    }
+</select>
+
+<!-- Debug: Display race details -->
+@if (selectedRace != null)
+{
+        <div>
+            <h4>Country: @selectedRace.Country</h4>
+            <p>Track: @selectedRace.Track</p>
+            <p>Season: @selectedRace.Season</p>
+            <p>Start Date: @selectedRace.Start_Date</p>
+            <p>End Date: @selectedRace.End_Date</p>
+            <p>Status: @selectedRace.Status</p>
+            <p>ID: @selectedRace.Race_Id</p>
+            <p>    </p>
+
+            <h5>Sessions:</h5>
+        @if (selectedRace.Sessions != null)
+        {
+            @foreach (var session in selectedRace.Sessions)
+            {
+                            <div>
+                                <p>Session Name: @session.Session_Name</p>
+                                <p>Date: @session.Date</p>
+                            </div>
+            }
+        }
+        </div>
+}
+else
+{
+        <p>No selected race.</p>
+}
+
+@code {
+    private RaceData? raceData;
+    private RaceResult? selectedRace;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using (var httpClient = new HttpClient())
+        {
+            // Set the BaseAddress and headers
+            httpClient.BaseAddress = new Uri("https://f1-live-motorsport-data.p.rapidapi.com/");
+            httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Key", "304c06dc21msh3182f3e514bb979p1f219cjsn998ff383a203");
+            httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Host", "f1-live-motorsport-data.p.rapidapi.com");
+
+            try
+            {
+                // Make the request
+                var response = await httpClient.GetStringAsync("races/2020");
+
+                // Log success
+                Console.WriteLine("API connected successfully!");
+
+                // Debug: Log the response from the API
+                Console.WriteLine($"Debug: API Response - {response}");
+
+                // Parse JSON data into a RaceData object
+                raceData = JsonSerializer.Deserialize<RaceData>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                // Debug: Log the races list
+                Console.WriteLine($"Debug: Races Count = {raceData?.Results?.Count ?? 0}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+    }
+
+    private void OnRaceSelected(ChangeEventArgs args)
+    {
+        var raceIdString = args.Value?.ToString();
+
+        if (!string.IsNullOrEmpty(raceIdString) && int.TryParse(raceIdString, out var raceId))
+        {
+            // Update selectedRace based on the full list of races
+            selectedRace = raceData?.Results?.FirstOrDefault(result => result.Race_Id == raceId);
+        }
+        else
+        {
+            // Handle the case where the raceId is not a valid integer
+            // You might want to log an error or display a message to the user.
+            Console.WriteLine("Invalid race ID selected.");
+        }
+    }
+
+}
